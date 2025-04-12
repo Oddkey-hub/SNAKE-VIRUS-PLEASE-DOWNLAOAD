@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Snake Game with Touch Controls</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #111;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #game-container {
+      position: relative;
+      margin-top: 20px;
+    }
+
+    canvas {
+      background-color: #000;
+      border: 2px solid #fff;
+      display: block;
+    }
+
+    #transaction-window {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 5px;
+      border-radius: 5px;
+      font-size: 12px;
+      width: 160px;
+    }
+
+    #transaction-window div {
+      cursor: pointer;
+      margin: 5px 0;
+      padding: 3px;
+    }
+
+    #transaction-window div:hover {
+      background-color: #444;
+    }
+
+    #controls {
+      margin-top: 20px;
+      display: grid;
+      grid-template-columns: 60px 60px 60px;
+      grid-template-rows: 60px 60px;
+      gap: 5px;
+      justify-content: center;
+    }
+
+    .btn {
+      width: 60px;
+      height: 60px;
+      background-color: #222;
+      color: white;
+      font-size: 24px;
+      border: 2px solid #555;
+      border-radius: 10px;
+      text-align: center;
+      line-height: 60px;
+      user-select: none;
+    }
+
+    .btn:active {
+      background-color: #555;
+    }
+
+    .empty {
+      background: none;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Snake Game</h1>
+  <div id="game-container">
+    <div id="transaction-window">
+      <div onclick="activateSpeedBoost(); openTransaction('https://www.youtube.com/watch?v=48rz8udZBmQ')">Speed Boost</div>
+      <div onclick="activateGodMode(); openTransaction('https://www.youtube.com/watch?v=48rz8udZBmQ')">GOD MODE</div>
+      <div onclick="makeSnakeHuge(); openTransaction('https://www.youtube.com/watch?v=48rz8udZBmQ')">Big & Long Snake</div>
+    </div>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+  </div>
+
+  <div id="controls">
+    <div class="empty"></div>
+    <div class="btn" onclick="setDirection('UP')">↑</div>
+    <div class="empty"></div>
+    <div class="btn" onclick="setDirection('LEFT')">←</div>
+    <div class="btn" onclick="setDirection('DOWN')">↓</div>
+    <div class="btn" onclick="setDirection('RIGHT')">→</div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const scale = 20;
+    const rows = canvas.height / scale;
+    const columns = canvas.width / scale;
+    let snake;
+    let fruit;
+    let speed = 100;
+    let gameInterval;
+    let godMode = false;
+
+    class Snake {
+      constructor() {
+        this.body = [{ x: 10, y: 10 }];
+        this.direction = "RIGHT";
+        this.length = 1;
+      }
+
+      move() {
+        const head = { ...this.body[0] };
+
+        if (this.direction === "RIGHT") head.x++;
+        if (this.direction === "LEFT") head.x--;
+        if (this.direction === "UP") head.y--;
+        if (this.direction === "DOWN") head.y++;
+
+        this.body.unshift(head);
+        if (this.body.length > this.length) {
+          this.body.pop();
+        }
+      }
+
+      changeDirection(dir) {
+        const opposite = {
+          LEFT: "RIGHT",
+          RIGHT: "LEFT",
+          UP: "DOWN",
+          DOWN: "UP"
+        };
+        if (dir !== opposite[this.direction]) {
+          this.direction = dir;
+        }
+      }
+
+      collision() {
+        const head = this.body[0];
+        return (
+          !godMode &&
+          (
+            head.x < 0 ||
+            head.y < 0 ||
+            head.x >= columns ||
+            head.y >= rows ||
+            this.body.slice(1).some(seg => seg.x === head.x && seg.y === head.y)
+          )
+        );
+      }
+
+      draw() {
+        this.body.forEach((seg, i) => {
+          ctx.fillStyle = i === 0 ? "#0f0" : "#fff";
+          ctx.fillRect(seg.x * scale, seg.y * scale, scale, scale);
+        });
+      }
+    }
+
+    class Fruit {
+      constructor() {
+        this.x = Math.floor(Math.random() * columns);
+        this.y = Math.floor(Math.random() * rows);
+      }
+
+      spawn() {
+        this.x = Math.floor(Math.random() * columns);
+        this.y = Math.floor(Math.random() * rows);
+      }
+
+      draw() {
+        ctx.fillStyle = "#f00";
+        ctx.fillRect(this.x * scale, this.y * scale, scale, scale);
+      }
+    }
+
+    function openTransaction(url) {
+      window.open(url, "_blank");
+    }
+
+    function activateSpeedBoost() {
+      clearInterval(gameInterval);
+      speed = 50;
+      gameInterval = setInterval(gameLoop, speed);
+    }
+
+    function activateGodMode() {
+      godMode = true;
+    }
+
+    function makeSnakeHuge() {
+      for (let i = 0; i < 20; i++) {
+        snake.length++;
+      }
+    }
+
+    function setDirection(dir) {
+      snake.changeDirection(dir);
+    }
+
+    function gameLoop() {
+      if (snake.collision()) {
+        alert("Game Over!");
+        resetGame();
+      }
+
+      snake.move();
+
+      if (snake.body[0].x === fruit.x && snake.body[0].y === fruit.y) {
+        snake.length++;
+        fruit.spawn();
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      snake.draw();
+      fruit.draw();
+    }
+
+    function resetGame() {
+      snake = new Snake();
+      fruit = new Fruit();
+      speed = 100;
+      godMode = false;
+      clearInterval(gameInterval);
+      gameInterval = setInterval(gameLoop, speed);
+    }
+
+    document.addEventListener("keydown", e => {
+      const keyMap = {
+        37: "LEFT",
+        38: "UP",
+        39: "RIGHT",
+        40: "DOWN"
+      };
+      if (keyMap[e.keyCode]) {
+        snake.changeDirection(keyMap[e.keyCode]);
+      }
+    });
+
+    snake = new Snake();
+    fruit = new Fruit();
+    gameInterval = setInterval(gameLoop, speed);
+  </script>
+</body>
+</html>
